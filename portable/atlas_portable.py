@@ -148,26 +148,79 @@ def render_html(report):
     sections.append("<p>Read-only observations. Root cause not established. Report may contain confidential infrastructure metadata.</p></html>")
     return "\n".join(sections)
 
+
+def changes(before, after):
+    if before is None:
+        return []
+    prior = {(h["id"], c["id"]): c for h in before["hosts"] for c in h["checks"]}
+    current = {(h["id"], c["id"]): c for h in after["hosts"] for c in h["checks"]}
+    result = []
+    for host, check in sorted(set(prior) | set(current)):
+        previous, latest = prior.get((host, check)), current.get((host, check))
+        if previous is None or latest is None or any(previous.get(k) != latest.get(k) for k in ("status", "observed", "detail")):
+            result.append({"host": host, "check": check, "before": previous.get("observed") if previous else None,
+                           "after": latest.get("observed") if latest else None})
+    return result
+
+def render_comparison(changeset):
+    escape = lambda value: html.escape(str(value if value is not None else "—"), quote=True)
+    parts = ["<h2>Changes since previous capture</h2><table><tr><th>Host</th><th>Check</th><th>Before</th><th>After</th></tr>"]
+    for item in changeset:
+        parts.append("<tr>" + "".join("<td>{}</td>".format(escape(item.get(k))) for k in ("host", "check", "before", "after")) + "</tr>")
+    return "\n".join(parts) + "</table>"
+
 def main(argv=None):
-    parser = argparse.ArgumentParser(description="ATLAS portable offline report")
-    parser.add_argument("manifest")
-    parser.add_argument("--output", required=True)
-    parser.add_argument("--html")
+    parser = argparse.ArgumentParser(description="ATLAS portable offline read-only report")
+    parser.add_argument("manifest", nargs="?")
+    parser.add_argument("--manifest", dest="manifest_option")
+    parser.add_argument("--output", help="Legacy explicit snapshot JSON path")
+    parser.add_argument("--html", help="Legacy explicit HTML report path")
+    parser.add_argument("--output-dir", help="Directory for versioned reports and comparisons")
     parser.add_argument("--allow-ssh", action="store_true")
     args = parser.parse_args(argv)
+    selected = args.manifest_option or args.manifest
+    if not selected:
+        parser.error("a manifest is required")
     try:
-        with open(args.manifest) as stream:
+        with open(selected, "r") as stream:
             inventory = validate(json.load(stream))
-        snapshot = observe(inventory, args.allow_ssh)
-        result = evaluate(snapshot)
         os.umask(0o077)
-        with open(args.output, "w") as stream:
+        previous = None
+        previous_path = None
+        if args.output_dir:
+            if not os.path.isdir(args.output_dir):
+                os.makedirs(args.output_dir, mode=0o700)
+            previous_path = os.path.join(args.output_dir, "latest.json")
+            if os.path.isfile(previous_path):
+                with open(previous_path, "r") as stream:
+                    previous = json.load(stream)
+                if previous.get("environment") != inventory["environment"]:
+                    raise ValueError("output directory belongs to another environment")
+        snapshot = observe(inventory, args.allow_ssh)
+        report = evaluate(snapshot)
+        changed = changes(previous, snapshot)
+        suffix = time.strftime("%Y%m%d-%H%M%S") + "-" + str(os.getpid())
+        output = args.output or (os.path.join(args.output_dir, "capture-" + suffix + ".json") if args.output_dir else None)
+        html_path = args.html or (os.path.join(args.output_dir, "capture-" + suffix + ".html") if args.output_dir else None)
+        if not output:
+            parser.error("--output or --output-dir is required")
+        with open(output, "x") as stream:
             json.dump(snapshot, stream, indent=2, sort_keys=True)
-        if args.html:
-            with open(args.html, "w") as stream:
-                stream.write(render_html(result))
-        print("ATLAS {}: {} hosts, {}".format(result["environment"], len(result["hosts"]), result["status"]))
-        return 0 if result["status"] == "ready" else 2
+        if html_path:
+            original_html = render_html(report)
+            if args.output_dir:
+                original_html = original_html.replace("</html>", render_comparison(changed) + "</html>")
+            with open(html_path, "x") as stream:
+                stream.write(original_html)
+        if previous_path:
+            tmp = previous_path + ".tmp-" + str(os.getpid())
+            with open(tmp, "x") as stream:
+                json.dump(snapshot, stream, indent=2, sort_keys=True)
+            os.replace(tmp, previous_path)
+        print("ATLAS {}: {} hosts, {}, {} changes".format(report["environment"], len(report["hosts"]), report["status"], len(changed)))
+        if html_path:
+            print("Report:", html_path)
+        return 0 if report["status"] == "ready" else 2
     except (OSError, ValueError, TypeError, KeyError) as exc:
         print("ATLAS:", exc, file=sys.stderr)
         return 1

@@ -24,3 +24,19 @@ def test_portable_rejects_bad_target(tmp_path):
         str(manifest), "--output", str(output)], capture_output=True, text=True)
     assert completed.returncode == 1
     assert not output.exists()
+
+def test_portable_repeated_offline_capture(tmp_path):
+    output = tmp_path / "captures"
+    for _ in range(2):
+        result = subprocess.run([sys.executable, str(ROOT/"portable"/"atlas_portable.py"),
+            "--manifest", str(ROOT/"examples"/"safe-local.json"), "--output-dir", str(output)],
+            capture_output=True, text=True)
+        assert result.returncode == 0, result.stderr
+    assert len(list(output.glob("capture-*.html"))) == 2
+    assert len(list(output.glob("capture-*.json"))) == 2
+    assert json.loads((output/"latest.json").read_text())["environment"] == "local-lab"
+
+def test_portable_python36_compatible_syntax():
+    import ast
+    for path in (ROOT/"portable"/"atlas_portable.py", ROOT/"src"/"atlas"/"agent.py"):
+        ast.parse(path.read_text(), feature_version=(3, 6))

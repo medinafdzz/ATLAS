@@ -165,3 +165,8 @@ The test suite covers collection, validation, readiness, drift, persistence, API
 ## License
 
 Apache-2.0; see [LICENSE](LICENSE). Report vulnerabilities without attaching production logs, private configuration or credentials.
+
+
+## Portable one-shot mode
+
+See [PORTABLE.md](PORTABLE.md) for a zero-dependency offline Linux entry point; `./run-atlas.sh` creates versioned HTML and JSON reports without SSH or background services by default.

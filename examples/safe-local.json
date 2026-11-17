@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "environment": "local-lab",
+  "hosts": [
+    {
+      "id": "local-host",
+      "role": "integration",
+      "transport": "local",
+      "checks": [
+        {
+          "id": "python",
+          "kind": "executable",
+          "name": "python3",
+          "required": true
+        },
+        {
+          "id": "shell",
+          "kind": "executable",
+          "name": "sh",
+          "required": true
+        },
+        {
+          "id": "os-release",
+          "kind": "file",
+          "name": "/etc/os-release",
+          "required": false
+        }
+      ]
+    }
+  ]
+}
