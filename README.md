@@ -87,6 +87,7 @@ Remote SSH uses batch mode and strict host-key verification. The target must be 
 | `atlas capture MANIFEST --output FILE` | Capture local checks; remote targets remain unknown |
 | `atlas capture MANIFEST --output FILE --allow-ssh` | Also query explicitly configured SSH hosts |
 | `atlas inspect SNAPSHOT` | Print readiness and check results |
+| `atlas watch MANIFEST --db FILE --interval 300` | Repeat bounded captures (remote SSH stays disabled unless explicitly enabled) |
 | `atlas import SNAPSHOT --db FILE` | Append snapshot to SQLite |
 | `atlas serve --host 127.0.0.1 --port 8000` | Run the private dashboard |
 | `atlas --help` | CLI usage |
