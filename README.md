@@ -16,6 +16,18 @@ ATLAS is designed for development, staging and integration systems. **It is not 
 - Append-only local SQLite history, private API and browser dashboard.
 - Offline operation with no cloud or AI requirement.
 
+## Portable mode for legacy Linux
+
+ATLAS also includes a dependency-free, one-shot reporter runnable with Python 3.6+ using the standard library. It does not start a network listener or install background agents. From the extracted repository root:
+
+```bash
+python3 portable/atlas_portable.py examples/lab.json --output snapshot.json --html report.html
+```
+
+Open the resulting `report.html` locally. This mode supports bounded local checks, declared dependencies and optional SSH collection with `--allow-ssh`, restricted to hosts in the approved inventory. Run periodic captures only through an administrator-approved scheduler. Treat generated reports and snapshots as confidential.
+
+The portable reporter does not replace the modern authenticated dashboard: central API/dashboard requires Python 3.9+ and installation of its Python dependencies.
+
 ## Installation
 
 Central app: Python 3.9+. Optional remote Linux targets need Python 3.6+ and SSH permissions for the approved observer user.
