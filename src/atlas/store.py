@@ -1,5 +1,6 @@
 """Append-only SQLite snapshot persistence and schema validation."""
 import json
+import os
 import re
 import sqlite3
 import time
@@ -74,6 +75,21 @@ class Store:
             row = db.execute("INSERT INTO snapshots(environment,collected_at,payload) VALUES(?,?,?)",
                              (snapshot["environment"], snapshot["captured_at"], json.dumps(snapshot)))
             return row.lastrowid
+
+    def backup(self, output):
+        """Create verified, consistent SQLite backup without overwriting files."""
+        target = str(output)
+        fd = os.open(target, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        os.close(fd)
+        try:
+            with self._db() as source, sqlite3.connect(target, timeout=10) as destination:
+                source.backup(destination)
+                if destination.execute("PRAGMA integrity_check").fetchone()[0] != "ok":
+                    raise ValueError("backup failed integrity check")
+            return target
+        except BaseException:
+            os.unlink(target)
+            raise
 
     def environments(self):
         with self._db() as db:

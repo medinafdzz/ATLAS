@@ -107,6 +107,7 @@ A manifest can define optional `dependencies` with `source_host`, `source_check`
 | `atlas watch MANIFEST --db FILE --interval 300` | Repeat bounded captures (remote SSH stays disabled unless explicitly enabled) |
 | `atlas import SNAPSHOT --db FILE` | Append snapshot to SQLite |
 | `atlas serve --host 127.0.0.1 --port 8000` | Run the private dashboard |
+| `atlas backup --db atlas.sqlite3 --output backup.sqlite3` | Create a verified, consistent database backup without overwriting existing files |
 | `atlas --help` | CLI usage |
 
 The API requires `Authorization: Bearer <ATLAS_API_TOKEN>`. Routes: `GET /healthz`, `GET /api/environments`, `GET /api/environments/{environment}/latest`, `GET /api/environments/{environment}/snapshots`, `POST /api/snapshots`.

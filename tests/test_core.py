@@ -93,3 +93,12 @@ def test_stale_snapshots_are_not_current_health():
     assert report["stale"] is True
     assert report["status"] == "unknown"
     assert all(host["status"] == "unknown" for host in report["hosts"])
+
+def test_consistent_backup_does_not_overwrite(tmp_path):
+    store = Store(tmp_path / "data.sqlite3")
+    store.add(collect(inventory()))
+    backup = tmp_path / "backup.sqlite3"
+    assert store.backup(backup) == str(backup)
+    assert Store(backup).environments()[0]["snapshots"] == 1
+    with pytest.raises(FileExistsError):
+        store.backup(backup)

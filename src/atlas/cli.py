@@ -30,6 +30,9 @@ def main(argv=None):
     cmd.add_argument("--interval", type=int, default=300)
     cmd.add_argument("--allow-ssh", action="store_true")
     cmd.add_argument("--once", action="store_true")
+    cmd = commands.add_parser("backup", help="Create a verified SQLite backup")
+    cmd.add_argument("--db", default=os.environ.get("ATLAS_DB", "./atlas.sqlite3"))
+    cmd.add_argument("--output", required=True)
     cmd = commands.add_parser("serve", help="Run private dashboard")
     cmd.add_argument("--host", default="127.0.0.1")
     cmd.add_argument("--port", type=int, default=8000)
@@ -63,6 +66,10 @@ def main(argv=None):
                     time.sleep(args.interval)
             except KeyboardInterrupt:
                 return 0
+        if args.command == "backup":
+            Store(args.db).backup(args.output)
+            print("backup saved:", args.output)
+            return 0
         if args.command == "serve":
             import uvicorn
             from .api import create_app
