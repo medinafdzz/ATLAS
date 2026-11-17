@@ -1,0 +1,26 @@
+name: offline-package
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+jobs:
+  package:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip wheel --wheel-dir wheelhouse .
+      - name: Verify offline installation
+        run: |
+          python -m venv /tmp/atlas-offline
+          /tmp/atlas-offline/bin/pip install --no-index --find-links wheelhouse atlas-infrastructure
+          /tmp/atlas-offline/bin/atlas --help
+      - name: Package
+        run: tar -czf atlas-offline-python312-linux-x64.tar.gz wheelhouse README.md LICENSE examples deploy
+      - uses: actions/upload-artifact@v4
+        with:
+          name: atlas-offline-python312-linux-x64
+          path: atlas-offline-python312-linux-x64.tar.gz
+          if-no-files-found: error

@@ -1,0 +1,20 @@
+[Unit]
+Description=ATLAS authorized periodic infrastructure observations
+After=network.target
+[Service]
+Type=simple
+User=atlas
+Group=atlas
+WorkingDirectory=/var/lib/atlas
+EnvironmentFile=/etc/atlas/atlas.env
+ExecStart=/opt/atlas/venv/bin/atlas watch /etc/atlas/manifest.json --db /var/lib/atlas/atlas.sqlite3 --interval 300
+Restart=on-failure
+RestartSec=15
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/atlas
+UMask=0077
+[Install]
+WantedBy=multi-user.target

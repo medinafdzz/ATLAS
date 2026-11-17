@@ -99,6 +99,14 @@ A manifest can define optional `dependencies` with `source_host`, `source_check`
 
 The API requires `Authorization: Bearer <ATLAS_API_TOKEN>`. Routes: `GET /healthz`, `GET /api/environments`, `GET /api/environments/{environment}/latest`, `GET /api/environments/{environment}/snapshots`, `POST /api/snapshots`.
 
+## Offline installation on Linux
+
+The optional **offline-package** GitHub Actions workflow builds an installation bundle containing a Python 3.12 Linux x86-64 wheelhouse, example inventory, systemd service templates and the README. It tests installation using `pip --no-index`. Download and verify the bundle through an approved software distribution channel before using it in an organization.
+
+Create an unprivileged `atlas` system account and directories `/opt/atlas/venv` and `/var/lib/atlas`, restricted to that account. Install with `pip install --no-index --find-links wheelhouse atlas-infrastructure`. Create `/etc/atlas/manifest.json` from your approved host inventory and a protected `/etc/atlas/atlas.env` containing `ATLAS_API_TOKEN` and `ATLAS_DB=/var/lib/atlas/atlas.sqlite3`. Review the `deploy/systemd` templates with the server administrator before installing them; the default observer does not enable remote SSH. Protect the dashboard behind a company-approved TLS identity gateway when accessed beyond localhost.
+
+The package is **not** a universal installer for RHEL/Python 3.6: ATLAS Central needs Python 3.9 or newer. The remote read-only probe is Python 3.6-compatible and can be used against explicitly authorized legacy targets.
+
 ## Operations and limitations
 
 - Install with least privileges and restrict database and inventory file permissions.
