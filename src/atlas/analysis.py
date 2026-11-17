@@ -1,5 +1,7 @@
 """Deterministic readiness, change detection and evidence-driven findings."""
-def evaluate(snapshot):
+import time
+def evaluate(snapshot, max_age_seconds=900):
+    stale = time.time() - snapshot["captured_at"] > max_age_seconds
     totals = {"ok": 0, "fail": 0, "unknown": 0, "drift": 0}
     hosts = []
     for host in snapshot["hosts"]:
@@ -34,8 +36,12 @@ def evaluate(snapshot):
                 host["status"] = "blocked"
             elif host["status"] == "ready":
                 host["status"] = "unknown"
+    if stale:
+        for host in hosts:
+            host["status"] = "unknown"
+            host["stale"] = True
     overall = "blocked" if any(h["status"] == "blocked" for h in hosts) else "unknown" if any(h["status"] == "unknown" for h in hosts) else "ready"
-    return {"environment": snapshot["environment"], "status": overall, "captured_at": snapshot["captured_at"], "totals": totals, "hosts": hosts, "dependencies": dependencies}
+    return {"environment": snapshot["environment"], "status": overall, "captured_at": snapshot["captured_at"], "stale": stale, "totals": totals, "hosts": hosts, "dependencies": dependencies}
 
 def diff(before, after):
     prev = {(h["id"], c["id"]): c for h in before["hosts"] for c in h["checks"]}
@@ -58,5 +64,5 @@ def diagnose(report, changes=None):
                                              "unknown": "Insufficient evidence"}[check["status"]],
                                  "evidence": check.get("detail"), "expected": check.get("expected"),
                                  "observed": check.get("observed"), "recently_changed": (host["id"], check["id"]) in changed,
-                                 "conclusion": "observation; root cause not established"})
+                                 "conclusion": "stale evidence; refresh required" if report.get("stale") else "observation; root cause not established"})
     return findings

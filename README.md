@@ -9,7 +9,7 @@ ATLAS is designed for development, staging and integration systems. **It is not 
 - Host inventory with explicit local and SSH targets (no subnet scans or automatic propagation).
 - Linux process checks via `/proc`, without collecting command-line arguments.
 - Executable availability, SHA-256 file checks (up to 16 MiB each), symlink integrity and opt-in TCP checks.
-- Readiness states: `ready`, `blocked`, `unknown`. Unknown never counts as success.
+- Readiness states: `ready`, `blocked`, `unknown`. Unknown and stale snapshots never count as current success.
 - Explicitly declared dependency relationships between checks across hosts.
 - Expected-state deviation and change detection between successive snapshots.
 - Evidence-backed incident findings; root cause is not inferred without proof.

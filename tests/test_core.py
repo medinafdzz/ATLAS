@@ -85,3 +85,11 @@ def test_dependency_endpoints_are_validated():
         Manifest.model_validate({"schema_version":1,"environment":"test","hosts":[
             {"id":"h","transport":"local","checks":[{"id":"c","kind":"executable","name":"sh"}]}],
             "dependencies":[{"source_host":"h","source_check":"c","target_host":"h","target_check":"absent"}]})
+
+def test_stale_snapshots_are_not_current_health():
+    original = collect(inventory())
+    original["captured_at"] -= 3600
+    report = evaluate(original)
+    assert report["stale"] is True
+    assert report["status"] == "unknown"
+    assert all(host["status"] == "unknown" for host in report["hosts"])
