@@ -39,4 +39,5 @@ def collect(manifest: Manifest, allow_ssh=False):
                      "status": "unknown", "observed": None, "detail": "remote failure: " + type(exc).__name__} for c in host.checks]}
         hosts.append({"id": host.id, "role": host.role, "transport": host.transport,
                       "observed_at": sample["observed_at"], "checks": sample["checks"]})
-    return {"schema_version": 1, "environment": manifest.environment, "captured_at": time.time(), "hosts": hosts}
+    return {"schema_version": 1, "environment": manifest.environment, "captured_at": time.time(), "hosts": hosts,
+            "dependencies": [dep.model_dump() for dep in manifest.dependencies]}

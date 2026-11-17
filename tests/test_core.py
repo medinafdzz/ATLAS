@@ -67,3 +67,21 @@ def test_watch_once(tmp_path):
     manifest = Path(__file__).parents[1] / "examples" / "lab.json"
     assert main(["watch", str(manifest), "--db", str(tmp_path / "watch.sqlite3"), "--once"]) == 0
     assert Store(tmp_path / "watch.sqlite3").environments()[0]["snapshots"] == 1
+
+def test_declared_dependency_blocks_dependent_service():
+    from atlas.store import validate_snapshot
+    manifest = Manifest.model_validate({"schema_version":1,"environment":"test","hosts":[
+        {"id":"web","transport":"local","checks":[{"id":"process","kind":"executable","name":"python3"}]},
+        {"id":"db","transport":"local","checks":[{"id":"service","kind":"file","name":"/missing/atlas-db"}]}],
+        "dependencies":[{"source_host":"web","source_check":"process","target_host":"db","target_check":"service"}]})
+    snap = collect(manifest)
+    validate_snapshot(snap)
+    report = evaluate(snap)
+    assert report["hosts"][0]["status"] == "blocked"
+    assert report["hosts"][0]["blocked_by"][0]["target_host"] == "db"
+
+def test_dependency_endpoints_are_validated():
+    with pytest.raises(ValueError):
+        Manifest.model_validate({"schema_version":1,"environment":"test","hosts":[
+            {"id":"h","transport":"local","checks":[{"id":"c","kind":"executable","name":"sh"}]}],
+            "dependencies":[{"source_host":"h","source_check":"c","target_host":"h","target_check":"absent"}]})

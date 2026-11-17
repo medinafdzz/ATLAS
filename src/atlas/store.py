@@ -20,6 +20,7 @@ def validate_snapshot(data):
     if not isinstance(hosts, list) or not 1 <= len(hosts) <= 500:
         raise ValueError("invalid hosts")
     seen_hosts = set()
+    endpoints = set()
     for host in hosts:
         if not isinstance(host, dict) or not isinstance(host.get("id"), str) or not IDENT.fullmatch(host["id"]) or host["id"] in seen_hosts:
             raise ValueError("invalid or duplicate host")
@@ -34,6 +35,7 @@ def validate_snapshot(data):
             if not isinstance(check, dict) or not isinstance(check.get("id"), str) or not IDENT.fullmatch(check["id"]) or check["id"] in seen_checks:
                 raise ValueError("invalid or duplicate check")
             seen_checks.add(check["id"])
+            endpoints.add((host["id"], check["id"]))
             if check.get("status") not in ("ok", "fail", "unknown", "drift") or not isinstance(check.get("required"), bool) or check.get("kind") not in ("file", "process", "executable", "symlink", "tcp"):
                 raise ValueError("invalid check fields")
             for key in ("expected", "detail"):
@@ -41,6 +43,19 @@ def validate_snapshot(data):
                     raise ValueError("invalid check field")
             if check.get("observed") is not None and (not isinstance(check["observed"], (str, int, float)) or len(str(check["observed"])) > 1024):
                 raise ValueError("invalid observed value")
+
+    deps = data.get("dependencies", [])
+    if not isinstance(deps, list) or len(deps) > 2000:
+        raise ValueError("invalid dependencies")
+    seen = set()
+    for dep in deps:
+        if not isinstance(dep, dict) or set(dep) != {"source_host", "source_check", "target_host", "target_check", "kind"} or dep["kind"] != "requires":
+            raise ValueError("invalid dependency")
+        src = dep["source_host"], dep["source_check"]
+        dst = dep["target_host"], dep["target_check"]
+        if src not in endpoints or dst not in endpoints or src == dst or (src, dst) in seen:
+            raise ValueError("invalid dependency endpoint")
+        seen.add((src, dst))
 
 class Store:
     def __init__(self, path):

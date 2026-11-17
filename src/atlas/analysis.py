@@ -18,8 +18,24 @@ def evaluate(snapshot):
         required = [c["status"] for c in checks if c.get("required", True)]
         status = "blocked" if any(s in ("fail", "drift") for s in required) else "unknown" if "unknown" in required else "ready"
         hosts.append({"id": host["id"], "role": host["role"], "status": status, "checks": checks})
+    status_map = {(host["id"], c["id"]): c["status"] for host in hosts for c in host["checks"]}
+    host_map = {host["id"]: host for host in hosts}
+    dependencies = []
+    for dep in snapshot.get("dependencies", []):
+        src = dep["source_host"], dep["source_check"]
+        dst = dep["target_host"], dep["target_check"]
+        target_status = status_map.get(dst, "unknown")
+        dependencies.append({**dep, "target_status": target_status})
+        host = host_map.get(src[0])
+        if host and target_status != "ok":
+            host.setdefault("blocked_by", []).append({"check": src[1], "target_host": dst[0],
+                                                       "target_check": dst[1], "target_status": target_status})
+            if target_status in ("fail", "drift"):
+                host["status"] = "blocked"
+            elif host["status"] == "ready":
+                host["status"] = "unknown"
     overall = "blocked" if any(h["status"] == "blocked" for h in hosts) else "unknown" if any(h["status"] == "unknown" for h in hosts) else "ready"
-    return {"environment": snapshot["environment"], "status": overall, "captured_at": snapshot["captured_at"], "totals": totals, "hosts": hosts}
+    return {"environment": snapshot["environment"], "status": overall, "captured_at": snapshot["captured_at"], "totals": totals, "hosts": hosts, "dependencies": dependencies}
 
 def diff(before, after):
     prev = {(h["id"], c["id"]): c for h in before["hosts"] for c in h["checks"]}

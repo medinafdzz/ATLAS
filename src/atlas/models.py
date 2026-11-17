@@ -50,14 +50,31 @@ class Host(BaseModel):
             raise ValueError("duplicate check ID")
         return self
 
+class Dependency(BaseModel):
+    """Explicit relation between authorized checks."""
+    model_config = ConfigDict(extra="forbid")
+    source_host: str = Field(pattern=r"^[A-Za-z0-9_.-]{1,128}$")
+    source_check: str = Field(pattern=r"^[A-Za-z0-9_.-]{1,80}$")
+    target_host: str = Field(pattern=r"^[A-Za-z0-9_.-]{1,128}$")
+    target_check: str = Field(pattern=r"^[A-Za-z0-9_.-]{1,80}$")
+    kind: Literal["requires"] = "requires"
+
 class Manifest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     schema_version: Literal[1]
     environment: str = Field(pattern=r"^[A-Za-z0-9_.-]{1,128}$")
     hosts: list[Host] = Field(min_length=1, max_length=500)
+    dependencies: list[Dependency] = Field(default_factory=list, max_length=2000)
 
     @model_validator(mode="after")
     def validate_hosts(self):
         if len({host.id for host in self.hosts}) != len(self.hosts):
             raise ValueError("duplicate host ID")
+        endpoints = {(host.id, c.id) for host in self.hosts for c in host.checks}
+        seen = set()
+        for dep in self.dependencies:
+            src, dst = (dep.source_host, dep.source_check), (dep.target_host, dep.target_check)
+            if src not in endpoints or dst not in endpoints or src == dst or (src, dst) in seen:
+                raise ValueError("unknown or duplicate dependency endpoint")
+            seen.add((src, dst))
         return self
