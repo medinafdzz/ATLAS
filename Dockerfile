@@ -3,7 +3,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 WORKDIR /app
 COPY pyproject.toml README.md LICENSE ./
 COPY src ./src
-RUN pip install --no-cache-dir . && useradd -r -u 10001 atlas
+RUN pip install --no-cache-dir . && useradd -r -u 10001 atlas && mkdir -p /data && chown atlas:atlas /data
 USER atlas
 EXPOSE 8000
 CMD ["atlas", "serve", "--host", "0.0.0.0"]

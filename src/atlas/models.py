@@ -1,3 +1,4 @@
+from __future__ import annotations
 """Inventory contracts with explicit permitted targets."""
 from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator, field_validator
