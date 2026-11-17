@@ -8,7 +8,9 @@ import socket
 import sys
 import time
 
-MAX_FILE_BYTES = 16 * 1024 * 1024
+MAX_FILE_BYTES = 2 * 1024 * 1024
+MAX_TOTAL_BYTES = 32 * 1024 * 1024
+MAX_CAPTURE_SECONDS = 10
 
 def probe(check):
     kind = check["kind"]
@@ -61,8 +63,23 @@ def probe(check):
 
 def capture(checks):
     results = []
+    started = time.time()
+    remaining_bytes = MAX_TOTAL_BYTES
     for check in checks[:100]:
-        result = probe(check)
+        if time.time() - started > MAX_CAPTURE_SECONDS:
+            result = {"status": "unknown", "observed": None, "detail": "capture time budget exceeded"}
+        elif check.get("kind") == "file":
+            try:
+                size = os.path.getsize(check["name"])
+            except (IOError, OSError):
+                size = 0
+            if size > remaining_bytes:
+                result = {"status": "unknown", "observed": None, "detail": "capture I/O budget exceeded"}
+            else:
+                result = probe(check)
+                remaining_bytes = max(0, remaining_bytes - size)
+        else:
+            result = probe(check)
         result.update(id=check["id"], kind=check["kind"], required=check.get("required", True), expected=check.get("expected"))
         results.append(result)
     return dict(observed_at=time.time(), checks=results)
