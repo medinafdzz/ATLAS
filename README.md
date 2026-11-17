@@ -10,6 +10,7 @@ ATLAS is designed for development, staging and integration systems. **It is not 
 - Linux process checks via `/proc`, without collecting command-line arguments.
 - Executable availability, SHA-256 file checks (up to 16 MiB each), symlink integrity and opt-in TCP checks.
 - Readiness states: `ready`, `blocked`, `unknown`. Unknown never counts as success.
+- Explicitly declared dependency relationships between checks across hosts.
 - Expected-state deviation and change detection between successive snapshots.
 - Evidence-backed incident findings; root cause is not inferred without proof.
 - Append-only local SQLite history, private API and browser dashboard.
@@ -79,6 +80,10 @@ atlas capture approved-inventory.json --output snapshot.json --allow-ssh
 ```
 
 Remote SSH uses batch mode and strict host-key verification. The target must be in the approved inventory and known-hosts configuration. A bounded Python probe executes non-persistently on the target. ATLAS does not elevate privileges, reuse discovered credentials, scan networks, deploy itself or modify remote files.
+
+## Dependencies
+
+A manifest can define optional `dependencies` with `source_host`, `source_check`, `target_host`, `target_check` and `kind: requires`. All endpoints must be declared in the manifest. A missing or failed target affects the dependent host's readiness while preserving the underlying observation. Dependencies are configured relationships; ATLAS does not claim to infer a network topology automatically.
 
 ## Commands
 
