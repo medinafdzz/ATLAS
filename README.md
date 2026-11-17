@@ -134,6 +134,20 @@ A local Ollama service listening on `127.0.0.1:11434` can generate explanatory h
 - No automatic changes or remediation actions are supported. Every finding distinguishes observed facts from root-cause hypotheses.
 - Test a replica before using ATLAS in critical or regulated environments.
 
+## Optional read-only external integrations
+
+ATLAS supports CLI-only metadata lookups for Jenkins, SonarQube, Bitbucket Cloud and Bitbucket Server/Data Center. These do not activate automatically, alter source control or execute builds. API routes are fixed and resource identifiers validated. Credentials are read from environment variables, never command-line arguments; HTTPS and no redirect are required for token-bearing requests.
+
+```bash
+# Examples using approved endpoints and the appropriately scoped token in ATLAS_EXTERNAL_TOKEN
+atlas external jenkins --url https://ci.example.org --resource pipeline-a
+atlas external sonarqube --url https://quality.example.org --resource my-project
+atlas external bitbucket-cloud --url https://api.bitbucket.org --resource my-workspace/my-repo
+atlas external bitbucket-server --url https://bitbucket.example.org --resource TEAM/my-repo
+```
+
+Jenkins Basic auth also requires `ATLAS_EXTERNAL_USER`. The returned records contain minimal build, gate or revision metadata. No organization-specific names, credentials or configuration should be committed to this repository.
+
 ## Development and tests
 
 ```bash

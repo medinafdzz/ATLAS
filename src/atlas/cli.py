@@ -30,6 +30,13 @@ def main(argv=None):
     cmd.add_argument("--interval", type=int, default=300)
     cmd.add_argument("--allow-ssh", action="store_true")
     cmd.add_argument("--once", action="store_true")
+    cmd = commands.add_parser("external", help="Read metadata from approved services")
+    cmd.add_argument("provider", choices=("jenkins", "sonarqube", "bitbucket-cloud", "bitbucket-server"))
+    cmd.add_argument("--url", required=True)
+    cmd.add_argument("--resource", required=True)
+    cmd.add_argument("--token-env", default="ATLAS_EXTERNAL_TOKEN")
+    cmd.add_argument("--username-env", default="ATLAS_EXTERNAL_USER")
+    cmd.add_argument("--allow-http", action="store_true")
     cmd = commands.add_parser("backup", help="Create a verified SQLite backup")
     cmd.add_argument("--db", default=os.environ.get("ATLAS_DB", "./atlas.sqlite3"))
     cmd.add_argument("--output", required=True)
@@ -66,6 +73,18 @@ def main(argv=None):
                     time.sleep(args.interval)
             except KeyboardInterrupt:
                 return 0
+        if args.command == "external":
+            from .integrations import fetch_status
+            import re
+            for variable in (args.token_env, args.username_env):
+                if not re.fullmatch(r"[A-Z][A-Z0-9_]{0,79}", variable):
+                    raise ValueError("invalid environment variable")
+            result = fetch_status(args.provider, args.url, args.resource,
+                                  token=os.environ.get(args.token_env, ""),
+                                  username=os.environ.get(args.username_env, ""),
+                                  allow_http=args.allow_http)
+            print(json.dumps(result, indent=2))
+            return 0
         if args.command == "backup":
             Store(args.db).backup(args.output)
             print("backup saved:", args.output)
