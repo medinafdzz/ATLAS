@@ -148,6 +148,10 @@ atlas external bitbucket-server --url https://bitbucket.example.org --resource T
 
 Jenkins Basic auth also requires `ATLAS_EXTERNAL_USER`. The returned records contain minimal build, gate or revision metadata. No organization-specific names, credentials or configuration should be committed to this repository.
 
+## Approved event correlation
+
+ATLAS accepts pre-reviewed, structured events without scraping arbitrary logs. A JSON event must contain `environment`, `host`, `source`, `kind` (`deployment`, `configuration`, `service`, `incident`, `build` or `change`), `level` (`info`, `warning`, `error`), `occurred_at` (Unix seconds) and a short `summary`. Events can be imported with `atlas events-import events.json --db atlas.sqlite3` or submitted to the authenticated `POST /api/events` route. Their history is available through `GET /api/environments/{environment}/events` and in the dashboard. Events within a 15-minute window on the same host are shown as **possible temporal associations**, not established causes. Do not submit raw secrets or sensitive unredacted logs.
+
 ## Development and tests
 
 ```bash

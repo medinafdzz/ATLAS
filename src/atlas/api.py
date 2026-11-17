@@ -11,6 +11,9 @@ from .store import Store, validate_snapshot
 class SnapshotInput(BaseModel):
     snapshot: dict
 
+class EventsInput(BaseModel):
+    events: list[dict]
+
 def create_app(database=None, token=None):
     secret = token if token is not None else os.environ.get("ATLAS_API_TOKEN", "")
     if len(secret) < 24:
@@ -73,6 +76,17 @@ def create_app(database=None, token=None):
             return generate_advice(state["incidents"])
         except (OSError, ValueError, TimeoutError) as exc:
             raise HTTPException(503, "local model unavailable: " + type(exc).__name__) from exc
+
+    @app.get("/api/environments/{environment}/events", dependencies=[Depends(authenticated)])
+    def events(environment: str):
+        return store.events(environment)
+
+    @app.post("/api/events", status_code=201, dependencies=[Depends(authenticated)])
+    def add_events(payload: EventsInput):
+        try:
+            return {"inserted": store.add_events(payload.events)}
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from exc
 
     @app.post("/api/snapshots", status_code=201, dependencies=[Depends(authenticated)])
     def ingest(data: SnapshotInput):

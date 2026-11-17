@@ -30,6 +30,9 @@ def main(argv=None):
     cmd.add_argument("--interval", type=int, default=300)
     cmd.add_argument("--allow-ssh", action="store_true")
     cmd.add_argument("--once", action="store_true")
+    cmd = commands.add_parser("events-import", help="Import bounded structured events")
+    cmd.add_argument("file")
+    cmd.add_argument("--db", default=os.environ.get("ATLAS_DB", "./atlas.sqlite3"))
     cmd = commands.add_parser("external", help="Read metadata from approved services")
     cmd.add_argument("provider", choices=("jenkins", "sonarqube", "bitbucket-cloud", "bitbucket-server"))
     cmd.add_argument("--url", required=True)
@@ -73,6 +76,10 @@ def main(argv=None):
                     time.sleep(args.interval)
             except KeyboardInterrupt:
                 return 0
+        if args.command == "events-import":
+            events = json.loads(Path(args.file).read_text(encoding="utf-8"))
+            print("events imported:", Store(args.db).add_events(events))
+            return 0
         if args.command == "external":
             from .integrations import fetch_status
             import re

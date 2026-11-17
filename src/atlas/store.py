@@ -65,6 +65,8 @@ class Store:
         with self._db() as db:
             db.execute("CREATE TABLE IF NOT EXISTS snapshots (id INTEGER PRIMARY KEY AUTOINCREMENT, environment TEXT NOT NULL, collected_at REAL NOT NULL, payload TEXT NOT NULL)")
             db.execute("CREATE INDEX IF NOT EXISTS snapshots_env ON snapshots(environment,id DESC)")
+            db.execute("CREATE TABLE IF NOT EXISTS events (id INTEGER PRIMARY KEY AUTOINCREMENT, environment TEXT NOT NULL, host TEXT NOT NULL, source TEXT NOT NULL, kind TEXT NOT NULL, level TEXT NOT NULL, occurred_at REAL NOT NULL, summary TEXT NOT NULL)")
+            db.execute("CREATE INDEX IF NOT EXISTS events_env ON events(environment,occurred_at DESC)")
 
     def _db(self):
         return sqlite3.connect(self.path, timeout=10)
@@ -91,6 +93,23 @@ class Store:
             os.unlink(target)
             raise
 
+    def add_events(self, events):
+        from .events import validate_event
+        if not isinstance(events, list) or not 1 <= len(events) <= 100:
+            raise ValueError("expected 1..100 events")
+        for event in events:
+            validate_event(event)
+        with self._db() as db:
+            db.executemany("INSERT INTO events(environment,host,source,kind,level,occurred_at,summary) VALUES(?,?,?,?,?,?,?)",
+                [(e["environment"], e["host"], e["source"], e["kind"], e["level"], e["occurred_at"], e["summary"]) for e in events])
+        return len(events)
+
+    def events(self, environment, limit=100):
+        with self._db() as db:
+            rows = db.execute("SELECT id,environment,host,source,kind,level,occurred_at,summary FROM events WHERE environment=? ORDER BY occurred_at DESC,id DESC LIMIT ?", (environment, min(limit,100))).fetchall()
+        keys = ("id","environment","host","source","kind","level","occurred_at","summary")
+        return [dict(zip(keys,row)) for row in rows]
+
     def environments(self):
         with self._db() as db:
             return [{"environment": row[0], "snapshots": row[1], "last_seen": row[2]} for row in db.execute(
@@ -110,4 +129,7 @@ class Store:
         previous = json.loads(rows[1][1]) if len(rows) > 1 else None
         changes = diff(previous, newest) if previous else {"environment": environment, "changes": [], "total": 0}
         report = evaluate(newest)
-        return {"snapshot_id": rows[0][0], "report": report, "diff": changes, "incidents": diagnose(report, changes)}
+        from .events import correlate
+        events = self.events(environment)
+        return {"snapshot_id": rows[0][0], "report": report, "diff": changes, "events": events,
+                "incidents": correlate(diagnose(report, changes), events, newest["captured_at"])}
