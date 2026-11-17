@@ -102,3 +102,13 @@ def test_consistent_backup_does_not_overwrite(tmp_path):
     assert Store(backup).environments()[0]["snapshots"] == 1
     with pytest.raises(FileExistsError):
         store.backup(backup)
+
+def test_failed_dependency_is_prioritized():
+    manifest = Manifest.model_validate({"schema_version":1,"environment":"test","hosts":[
+        {"id":"web","transport":"local","checks":[{"id":"main","kind":"executable","name":"python3"}]},
+        {"id":"db","transport":"local","checks":[{"id":"service","kind":"file","name":"/missing/atlas-db"}]}],
+        "dependencies":[{"source_host":"web","source_check":"main","target_host":"db","target_check":"service"}]})
+    ranked = diagnose(evaluate(collect(manifest)))
+    assert ranked[0]["host"] == "db"
+    assert ranked[0]["dependent_checks"] == 1
+    assert ranked[0]["priority_score"] >= 4

@@ -12,7 +12,7 @@ ATLAS is designed for development, staging and integration systems. **It is not 
 - Readiness states: `ready`, `blocked`, `unknown`. Unknown and stale snapshots never count as current success.
 - Explicitly declared dependency relationships between checks across hosts.
 - Expected-state deviation and change detection between successive snapshots.
-- Evidence-backed incident findings; root cause is not inferred without proof.
+- Evidence-backed incident findings with deterministic prioritization based on failed dependent checks and recent changes; root cause is not inferred without proof.
 - Append-only local SQLite history, private API and browser dashboard.
 - Offline operation with no cloud or AI requirement.
 

@@ -56,13 +56,22 @@ def diff(before, after):
 def diagnose(report, changes=None):
     changed = {(c["host"], c["check"]) for c in (changes or {}).get("changes", [])}
     findings = []
+    impact = {}
+    for dep in report.get("dependencies", []):
+        if dep.get("target_status") != "ok":
+            key = dep["target_host"], dep["target_check"]
+            impact[key] = impact.get(key, 0) + 1
     for host in report["hosts"]:
         for check in host["checks"]:
             if check["status"] in ("fail", "drift", "unknown"):
+                changed_here = (host["id"], check["id"]) in changed
+                dependents = impact.get((host["id"], check["id"]), 0)
+                priority = (2 if check["status"] in ("fail", "drift") else 0) + (2 if changed_here else 0) + min(dependents * 2, 10)
                 findings.append({"host": host["id"], "check": check["id"], "status": check["status"],
+                                 "priority_score": priority, "dependent_checks": dependents,
                                  "finding": {"fail": "Resource unavailable", "drift": "Expected-state deviation",
                                              "unknown": "Insufficient evidence"}[check["status"]],
                                  "evidence": check.get("detail"), "expected": check.get("expected"),
-                                 "observed": check.get("observed"), "recently_changed": (host["id"], check["id"]) in changed,
+                                 "observed": check.get("observed"), "recently_changed": changed_here,
                                  "conclusion": "stale evidence; refresh required" if report.get("stale") else "observation; root cause not established"})
-    return findings
+    return sorted(findings, key=lambda item: (-item["priority_score"], item["host"], item["check"]))
