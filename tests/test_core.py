@@ -60,3 +60,10 @@ def test_unknown_is_not_ready():
     snapshot = collect(inventory())
     snapshot["hosts"][0]["checks"][1]["status"] = "unknown"
     assert evaluate(snapshot)["status"] == "unknown"
+
+def test_watch_once(tmp_path):
+    from atlas.cli import main
+    from pathlib import Path
+    manifest = Path(__file__).parents[1] / "examples" / "lab.json"
+    assert main(["watch", str(manifest), "--db", str(tmp_path / "watch.sqlite3"), "--once"]) == 0
+    assert Store(tmp_path / "watch.sqlite3").environments()[0]["snapshots"] == 1

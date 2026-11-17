@@ -3,6 +3,7 @@ import argparse
 import json
 import os
 import sys
+import time
 from pathlib import Path
 from . import __version__
 from .analysis import evaluate
@@ -23,6 +24,12 @@ def main(argv=None):
     cmd = commands.add_parser("import", help="Import snapshot into SQLite")
     cmd.add_argument("snapshot")
     cmd.add_argument("--db", default=os.environ.get("ATLAS_DB", "./atlas.sqlite3"))
+    cmd = commands.add_parser("watch", help="Repeat explicitly authorized captures")
+    cmd.add_argument("manifest")
+    cmd.add_argument("--db", default=os.environ.get("ATLAS_DB", "./atlas.sqlite3"))
+    cmd.add_argument("--interval", type=int, default=300)
+    cmd.add_argument("--allow-ssh", action="store_true")
+    cmd.add_argument("--once", action="store_true")
     cmd = commands.add_parser("serve", help="Run private dashboard")
     cmd.add_argument("--host", default="127.0.0.1")
     cmd.add_argument("--port", type=int, default=8000)
@@ -40,6 +47,22 @@ def main(argv=None):
         if args.command == "import":
             print("snapshot ID:", Store(args.db).add(json.loads(Path(args.snapshot).read_text(encoding="utf-8"))))
             return 0
+        if args.command == "watch":
+            if not 10 <= args.interval <= 86400:
+                raise ValueError("interval must be between 10 and 86400 seconds")
+            manifest = Manifest.model_validate_json(Path(args.manifest).read_text(encoding="utf-8"))
+            store = Store(args.db)
+            try:
+                while True:
+                    snapshot = collect(manifest, allow_ssh=args.allow_ssh)
+                    snapshot_id = store.add(snapshot)
+                    status = evaluate(snapshot)["status"]
+                    print("snapshot {} | environment {} | status {}".format(snapshot_id, manifest.environment, status), flush=True)
+                    if args.once:
+                        return 0 if status == "ready" else 2
+                    time.sleep(args.interval)
+            except KeyboardInterrupt:
+                return 0
         if args.command == "serve":
             import uvicorn
             from .api import create_app
