@@ -59,6 +59,21 @@ def create_app(database=None, token=None):
             raise HTTPException(404, "environment not found")
         return result
 
+    @app.post("/api/environments/{environment}/advice", dependencies=[Depends(authenticated)])
+    def advice(environment: str):
+        state = store.latest(environment)
+        if state is None:
+            raise HTTPException(404, "environment not found")
+        if state["report"].get("stale"):
+            raise HTTPException(409, "latest snapshot is stale")
+        if not os.environ.get("ATLAS_OLLAMA_MODEL"):
+            raise HTTPException(503, "local model not configured")
+        from .intelligence import generate_advice
+        try:
+            return generate_advice(state["incidents"])
+        except (OSError, ValueError, TimeoutError) as exc:
+            raise HTTPException(503, "local model unavailable: " + type(exc).__name__) from exc
+
     @app.post("/api/snapshots", status_code=201, dependencies=[Depends(authenticated)])
     def ingest(data: SnapshotInput):
         try:

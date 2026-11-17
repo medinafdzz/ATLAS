@@ -23,3 +23,21 @@ def test_reject_invalid_import(tmp_path):
     client = TestClient(create_app(str(tmp_path / "db.sqlite3"), TOKEN))
     headers = {"Authorization": "Bearer " + TOKEN}
     assert client.post("/api/snapshots", json={"snapshot":{"schema_version":999}}, headers=headers).status_code == 422
+
+def test_model_advice_requires_auth_and_known_environment(tmp_path):
+    client = TestClient(create_app(str(tmp_path / "db.sqlite3"), TOKEN))
+    assert client.post("/api/environments/none/advice").status_code == 401
+    assert client.post("/api/environments/none/advice", headers={"Authorization":"Bearer "+TOKEN}).status_code == 404
+
+def test_local_model_advice_has_no_action_access():
+    import io
+    from atlas.intelligence import generate_advice
+    class Response(io.BytesIO):
+        def getheader(self, key):
+            return None
+    def opener(request, timeout):
+        assert request.full_url == "http://127.0.0.1:11434/api/generate"
+        return Response(b'{"response":"Check the expected configuration."}')
+    result = generate_advice([], model="test:local", opener=opener)
+    assert result["verified"] is False
+    assert "Check" in result["advice"]

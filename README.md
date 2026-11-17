@@ -119,6 +119,10 @@ Create an unprivileged `atlas` system account and directories `/opt/atlas/venv` 
 
 The package is **not** a universal installer for RHEL/Python 3.6: ATLAS Central needs Python 3.9 or newer. The remote read-only probe is Python 3.6-compatible and can be used against explicitly authorized legacy targets.
 
+## Optional local diagnosis assistance
+
+A local Ollama service listening on `127.0.0.1:11434` can generate explanatory hypotheses when `ATLAS_OLLAMA_MODEL` is explicitly configured. The dashboard contains a manual button to request advice. Without this configuration, ATLAS continues functioning deterministically and offline. Observations can contain sensitive metadata; enable the local model only within an approved environment. Model text is unverified guidance, never a command or an automated repair. The model is not allowed to access remote hosts.
+
 ## Operations and limitations
 
 - Install with least privileges and restrict database and inventory file permissions.
