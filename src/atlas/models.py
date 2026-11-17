@@ -1,6 +1,6 @@
 from __future__ import annotations
 """Inventory contracts with explicit permitted targets."""
-from typing import Literal
+from typing import Literal, Optional
 from pydantic import BaseModel, ConfigDict, Field, model_validator, field_validator
 
 class Check(BaseModel):
@@ -9,7 +9,7 @@ class Check(BaseModel):
     kind: Literal["executable", "process", "file", "symlink", "tcp"]
     name: str = Field(min_length=1, max_length=512)
     required: bool = True
-    expected: str | None = None
+    expected: Optional[str] = None
 
     @field_validator("name")
     @classmethod
@@ -33,8 +33,8 @@ class Host(BaseModel):
     id: str = Field(pattern=r"^[A-Za-z0-9_.-]{1,128}$")
     role: str = Field(default="generic", max_length=128)
     transport: Literal["local", "ssh"]
-    address: str | None = None
-    user: str | None = None
+    address: Optional[str] = None
+    user: Optional[str] = None
     port: int = Field(default=22, ge=1, le=65535)
     checks: list[Check] = Field(min_length=1, max_length=100)
 
