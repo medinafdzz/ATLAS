@@ -170,3 +170,8 @@ Apache-2.0; see [LICENSE](LICENSE). Report vulnerabilities without attaching pro
 ## Portable one-shot mode
 
 See [PORTABLE.md](PORTABLE.md) for a zero-dependency offline Linux entry point; `./run-atlas.sh` creates versioned HTML and JSON reports without SSH or background services by default.
+
+
+## Legacy runtime validation
+
+The `offline-package` workflow includes a dedicated `portable` job running the portable Python tool with Python 3.6 in a network-isolated container and publishing a source-only archive plus SHA-256 checksum. The real target host's kernel, security policies and available commands still require acceptance on site.

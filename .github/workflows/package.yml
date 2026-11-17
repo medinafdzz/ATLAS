@@ -25,3 +25,23 @@ jobs:
           name: atlas-offline-python312-linux-x64
           path: atlas-offline-python312-linux-x64.tar.gz
           if-no-files-found: error
+
+  portable:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate on legacy Python 3.6 runtime
+        run: |
+          docker run --rm --network none -v "$PWD:/work:ro" -w /work python:3.6-slim python portable/atlas_portable.py --manifest examples/safe-local.json --output-dir /tmp/atlas-legacy
+      - name: Build standalone source distribution
+        run: |
+          mkdir -p dist
+          tar -czf dist/atlas-portable-linux.tar.gz run-atlas.sh portable/atlas_portable.py src/atlas/agent.py src/atlas/__init__.py examples/safe-local.json PORTABLE.md
+          cd dist && sha256sum atlas-portable-linux.tar.gz > SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: atlas-portable-linux
+          path: |
+            dist/atlas-portable-linux.tar.gz
+            dist/SHA256SUMS
+          if-no-files-found: error
