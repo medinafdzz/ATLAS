@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "environment": "demo-lab",
+  "hosts": [
+    {"id": "localhost", "transport": "local", "role": "application",
+      "checks": [
+        {"id": "python", "kind": "executable", "name": "python3", "required": true},
+        {"id": "shell", "kind": "executable", "name": "sh", "required": true}
+      ]
+    }
+  ]
+}

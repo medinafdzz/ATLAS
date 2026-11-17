@@ -1,0 +1,15 @@
+services:
+  atlas:
+    build: .
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      ATLAS_DB: /data/atlas.sqlite3
+      ATLAS_API_TOKEN: ${ATLAS_API_TOKEN:?Set ATLAS_API_TOKEN in environment}
+    volumes:
+      - atlas-data:/data
+    read_only: true
+    tmpfs: /tmp
+    security_opt: ["no-new-privileges:true"]
+volumes:
+  atlas-data:

@@ -1,0 +1,46 @@
+"""Deterministic readiness, change detection and evidence-driven findings."""
+def evaluate(snapshot):
+    totals = {"ok": 0, "fail": 0, "unknown": 0, "drift": 0}
+    hosts = []
+    for host in snapshot["hosts"]:
+        checks = []
+        for original in host["checks"]:
+            check = dict(original)
+            status = check.get("status", "unknown")
+            expected = check.get("expected")
+            if status == "ok" and expected is not None and str(check.get("observed")) != expected:
+                status = "drift"
+            if status not in totals:
+                status = "unknown"
+            check["status"] = status
+            totals[status] += 1
+            checks.append(check)
+        required = [c["status"] for c in checks if c.get("required", True)]
+        status = "blocked" if any(s in ("fail", "drift") for s in required) else "unknown" if "unknown" in required else "ready"
+        hosts.append({"id": host["id"], "role": host["role"], "status": status, "checks": checks})
+    overall = "blocked" if any(h["status"] == "blocked" for h in hosts) else "unknown" if any(h["status"] == "unknown" for h in hosts) else "ready"
+    return {"environment": snapshot["environment"], "status": overall, "captured_at": snapshot["captured_at"], "totals": totals, "hosts": hosts}
+
+def diff(before, after):
+    prev = {(h["id"], c["id"]): c for h in before["hosts"] for c in h["checks"]}
+    curr = {(h["id"], c["id"]): c for h in after["hosts"] for c in h["checks"]}
+    changes = []
+    for key in sorted(set(prev) | set(curr)):
+        old, new = prev.get(key), curr.get(key)
+        if old is None or new is None or any(old.get(field) != new.get(field) for field in ("status", "observed", "detail")):
+            changes.append({"host": key[0], "check": key[1], "before": old, "after": new})
+    return {"environment": after["environment"], "changes": changes, "total": len(changes)}
+
+def diagnose(report, changes=None):
+    changed = {(c["host"], c["check"]) for c in (changes or {}).get("changes", [])}
+    findings = []
+    for host in report["hosts"]:
+        for check in host["checks"]:
+            if check["status"] in ("fail", "drift", "unknown"):
+                findings.append({"host": host["id"], "check": check["id"], "status": check["status"],
+                                 "finding": {"fail": "Resource unavailable", "drift": "Expected-state deviation",
+                                             "unknown": "Insufficient evidence"}[check["status"]],
+                                 "evidence": check.get("detail"), "expected": check.get("expected"),
+                                 "observed": check.get("observed"), "recently_changed": (host["id"], check["id"]) in changed,
+                                 "conclusion": "observation; root cause not established"})
+    return findings
